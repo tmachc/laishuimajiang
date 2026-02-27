@@ -36,12 +36,6 @@ cc.Class({
     },
 
     onBtnOK: function () {
-        var usedTypes = ['xzdd', 'xlch'];
-        var type = this.getType();
-        if (usedTypes.indexOf(type) == -1) {
-            return;
-        }
-
         this.node.active = false;
         this.createRoom();
     },
@@ -89,7 +83,6 @@ cc.Class({
         var onCreate = function (ret) {
             if (ret.errcode !== 0) {
                 cc.vv.wc.hide();
-                //console.log(ret.errmsg);
                 if (ret.errcode == 2222) {
                     cc.vv.alert.show("提示", "钻石不足，创建房间失败!");
                 }
@@ -102,15 +95,8 @@ cc.Class({
             }
         };
 
-        var type = this.getType();
-        var conf = null;
-        if (type == 'xzdd') {
-            conf = this.constructSCMJConf();
-        }
-        else if (type == 'xlch') {
-            conf = this.constructSCMJConf();
-        }
-        conf.type = type;
+        var conf = this.constructSCMJConf();
+        conf.type = "kanhu";
 
         var data = {
             account: cc.vv.userMgr.account,

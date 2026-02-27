@@ -1,4 +1,4 @@
-﻿var db = require('../utils/db');
+var db = require('../utils/db');
 
 var rooms = {};
 var creatingRooms = {};
@@ -8,8 +8,8 @@ var totalRooms = 0;
 
 var DI_FEN = [1,2,5];
 var MAX_FAN = [3,4,5];
-var JU_SHU = [4,8];
-var JU_SHU_COST = [2,3];
+var JU_SHU = [4];
+var JU_SHU_COST = [2];
 
 function generateRoomId(){
 	var roomId = "";
@@ -31,12 +31,7 @@ function constructRoomFromDb(dbdata){
 	};
 
 
-	if(roomInfo.conf.type == "xlch"){
-		roomInfo.gameMgr = require("./gamemgr_xlch");
-	}
-	else{
-		roomInfo.gameMgr = require("./gamemgr_xzdd");
-	}
+	roomInfo.gameMgr = require("./gamemgr");
 	var roomId = roomInfo.id;
 
 	for(var i = 0; i < 4; ++i){
@@ -67,8 +62,7 @@ function constructRoomFromDb(dbdata){
 
 exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
 	if(
-		roomConf.type == null
-		|| roomConf.difen == null
+		roomConf.difen == null
 		|| roomConf.zimo == null
 		|| roomConf.jiangdui == null
 		|| roomConf.huansanzhang == null
@@ -130,7 +124,7 @@ exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
 						nextButton:0,
 						seats:[],
 						conf:{
-							type:roomConf.type,
+							type:"kanhu",
 							baseScore:DI_FEN[roomConf.difen],
 						    zimo:roomConf.zimo,
 						    jiangdui:roomConf.jiangdui,
@@ -144,18 +138,13 @@ exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
 						}
 					};
 					
-					if(roomConf.type == "xlch"){
-						roomInfo.gameMgr = require("./gamemgr_xlch");
-					}
-					else{
-						roomInfo.gameMgr = require("./gamemgr_xzdd");
-					}
+					roomInfo.gameMgr = require("./gamemgr");
 					console.log(roomInfo.conf);
 					
 					for(var i = 0; i < 4; ++i){
 						roomInfo.seats.push({
 							userId:0,
-							score:0,
+							score:50,
 							name:"",
 							ready:false,
 							seatIndex:i,
