@@ -123,43 +123,22 @@ cc.Class({
             type:baseInfo.type,
         }
         if(this.conf.type == null){
-            this.conf.type == "xzdd";
+            this.conf.type = "xzdd";
         }
     },
     
     getWanfa:function(){
-        var conf = this.conf;
-        if(conf && conf.maxGames!=null && conf.maxFan!=null){
-            var strArr = [];
-            strArr.push(conf.maxGames + "局");
-            strArr.push(conf.maxFan + "番封顶");
-            if(conf.hsz){
-                strArr.push("换三张");   
-            }
-            if(conf.zimo == 1){
-                strArr.push("自摸加番");
-            }
-            else{
-                strArr.push("自摸加底");
-            }
-            if(conf.jiangdui){
-                strArr.push("将对");   
-            }
-            if(conf.dianganghua == 1){
-                strArr.push("点杠花(自摸)");   
-            }
-            else{
-                strArr.push("点杠花(放炮)");
-            }
-            if(conf.menqing){
-                strArr.push("门清、中张");   
-            }
-            if(conf.tiandihu){
-                strArr.push("天地胡");   
-            }
-            return strArr.join(" ");
+        // 游戏未开始时显示"准备开始"
+        if(this.numOfGames == 0){
+            return "准备开始";
         }
-        return "";
+        // 显示当前局数和圈风庄
+        // 圈 = (numOfGames - 1) / 4 + 1
+        // 庄 = button 映射：0=东, 1=南, 2=西, 3=北
+        var quan = Math.ceil(this.numOfGames / 4);
+        var zhuangArr = ["东", "南", "西", "北"];
+        var zhuang = zhuangArr[this.button % 4];
+        return "当前局数 " + this.numOfGames + "圈" + zhuang;
     },
     
     initHandlers:function(){

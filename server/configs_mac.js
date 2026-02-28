@@ -1,4 +1,4 @@
-﻿var HALL_IP = "127.0.0.1";//如果非本机访问，这里要变
+﻿var HALL_IP = "192.168.31.193";//如果非本机访问，这里要变
 var HALL_CLIENT_PORT = 9001;
 var HALL_ROOM_PORT = 9002;
 
@@ -9,7 +9,7 @@ var LOCAL_IP = 'localhost';
 
 exports.mysql = function(){
 	return {
-		HOST:'127.0.0.1',
+		HOST:'localhost',
 		USER:'root',
 		PSWD:'',//如果连接失败，请检查这里
 		DB:'db_tmachc',//如果连接失败，请检查这里
@@ -55,8 +55,8 @@ exports.game_server = function(){
 		//HTTP TICK的间隔时间，用于向大厅服汇报情况
 		HTTP_TICK_TIME:5000,
 		//大厅服IP
-		HALL_IP:LOCAL_IP,
-		FOR_HALL_IP:LOCAL_IP,
+		HALL_IP:HALL_IP,
+		FOR_HALL_IP:HALL_IP,
 		//大厅服端口
 		HALL_PORT:HALL_ROOM_PORT,
 		//与大厅服协商好的通信加密KEY

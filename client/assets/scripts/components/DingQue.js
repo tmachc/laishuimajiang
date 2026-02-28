@@ -74,46 +74,9 @@ cc.Class({
     },
     
     showDingQueChoice:function(){
-        this.queYiMen.active = true;
-        var sd = cc.vv.gameNetMgr.getSelfData();
-        var typeCounts = [0,0,0];
-        for(var i = 0; i < sd.holds.length; ++i){
-            var pai = sd.holds[i];
-            var type = cc.vv.mahjongmgr.getMahjongType(pai);
-            typeCounts[type]++;
-        }
-        
-        var min = 65535;
-        var minIndex = 0;
-        for(var i = 0; i < typeCounts.length; ++i){
-            if(typeCounts[i] < min){
-                min = typeCounts[i];
-                minIndex = i;
-            }
-        }
-        
-        var arr = ["tong","tiao","wan"];
-        for(var i = 0; i < arr.length; ++i){
-            var node = this.queYiMen.getChildByName(arr[i]);
-            if(minIndex == i){
-                node.getComponent(cc.Animation).play("dingque_tuijian");
-            }
-            else{
-                node.getComponent(cc.Animation).stop();
-            }
-            //this.queYiMen.getChildByName(arr[i]).getChildByName('jian').active = minIndex == i;    
-        }
-        
-        this.reset();
-        for(var i = 0; i < this.tips.length; ++i){
-            var n = this.tips[i];
-            if(i > 0){
-                n.node.active = false;                
-            }
-            else{
-                n.node.active = true;
-            }
-        }
+        // 不显示定缺界面，直接发送 dingque = -1
+        cc.vv.gameNetMgr.dingque = -1;
+        cc.vv.net.send("dingque",-1);
     },
     
     initDingQue:function(){

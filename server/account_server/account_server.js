@@ -2,7 +2,6 @@ var crypto = require('../utils/crypto');
 var express = require('express');
 var db = require('../utils/db');
 var http = require("../utils/http");
-var fibers = require('fibers');
 
 var app = express();
 var hallAddr = "";
@@ -17,8 +16,9 @@ var config = null;
 exports.start = function(cfg){
 	config = cfg;
 	hallAddr = config.HALL_IP  + ":" + config.HALL_CLIENT_PORT;
-	app.listen(config.CLIENT_PORT);
-	console.log("account server is listening on " + config.CLIENT_PORT);
+	app.listen(config.CLIENT_PORT, '0.0.0.0');
+	console.log("account server is listening on 0.0.0.0:" + config.CLIENT_PORT);
+	console.log("hallAddr:", hallAddr);
 }
 
 
@@ -32,9 +32,7 @@ app.all('*', function(req, res, next) {
     res.header("Access-Control-Allow-Methods","PUT,POST,GET,DELETE,OPTIONS");
     res.header("X-Powered-By",' 3.2.1')
 	res.header("Content-Type", "application/json;charset=utf-8");
-	fibers(function(){
-		next();
-	}).run();
+	next();
 });
 
 app.get('/register',function(req,res){
@@ -75,6 +73,7 @@ app.get('/get_version',function(req,res){
 });
 
 app.get('/get_serverinfo',function(req,res){
+	console.log('get_serverinfo called, returning hallAddr:', hallAddr);
 	var ret = {
 		version:config.VERSION,
 		hall:hallAddr,
@@ -234,15 +233,38 @@ app.get('/image', function (req, res) {
 
 	url = url.split('.jpg')[0];
 	
-
 	var safe = url.search('https://') == 0;
 	console.log(url);
-	var ret = http.getSync(url, null, safe, 'binary');
-	if (!ret.type || !ret.data) {
-	  http.send(res, 1, 'invalid url', true);
-	  return;
-	}
-	res.writeHead(200, { "Content-Type": ret.type });
-	res.write(ret.data, 'binary');
-	res.end();
+	
+	// 使用异步方式获取图片
+	var proto = safe ? require('https') : require('http');
+	var qs = require('querystring');
+	var fullUrl = url + '?' + qs.stringify({});
+	
+	var req2 = proto.get(fullUrl, function (res2) {
+		var contentType = res2.headers["content-type"];
+		var data = [];
+		
+		res2.on('data', function (chunk) {
+			data.push(chunk);
+		});
+		
+		res2.on('end', function() {
+			if (!contentType || data.length === 0) {
+				http.send(res, 1, 'invalid url', true);
+				return;
+			}
+			var buffer = Buffer.concat(data);
+			res.writeHead(200, { "Content-Type": contentType });
+			res.write(buffer, 'binary');
+			res.end();
+		});
+	});
+	
+	req2.on('error', function (e) {
+		console.log('problem with request: ' + e.message);
+		http.send(res, 1, 'invalid url', true);
+	});
+	
+	req2.end();
 });

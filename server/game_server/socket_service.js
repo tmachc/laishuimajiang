@@ -49,7 +49,11 @@ exports.start = function(conf,mgr){
 			
 			//检查参数合法性
 			if(token == null || roomId == null || sign == null || time == null){
-				console.log(1);
+				console.log("invalid parameters:");
+				console.log("token:" + token);
+				console.log("roomId:" + roomId);
+				console.log("sign:" + sign);
+				console.log("time:" + time);
 				socket.emit('login_result',{errcode:1,errmsg:"invalid parameters"});
 				return;
 			}

@@ -34,7 +34,10 @@ var Global = cc.Class({
             var self = this;
             
             var opts = {
-                'reconnection':false,
+                'reconnection':true,
+                'reconnectionDelay':1000,
+                'reconnectionDelayMax':5000,
+                'reconnectionAttempts':99999,
                 'force new connection': true,
                 'transports':['websocket', 'polling']
             }

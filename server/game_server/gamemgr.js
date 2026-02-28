@@ -6,6 +6,17 @@ var crypto = require("../utils/crypto");
 var games = {};
 var gamesIdBase = 0;
 
+// 扣除分数，确保分数不会低于0（输光不负）
+function deductScore(seat, score){
+    if(score < 0){
+        score = 0;
+    }
+    seat.score -= score;
+    if(seat.score < 0){
+        seat.score = 0;
+    }
+}
+
 var ACTION_CHUPAI = 1;
 var ACTION_MOPAI = 2;
 var ACTION_PENG = 3;
@@ -17,18 +28,53 @@ var gameSeatsOfUsers = {};
 
 function getMJType(id){
     if(id >= 0 && id < 9){
+        //筒
         return 0;
     }
     else if(id >= 9 && id < 18){
+        //条
         return 1;
     }
     else if(id >= 18 && id < 27){
+        //万
         return 2;
+    }
+    else if(id >= 27 && id < 34){
+        //字牌：东=27,南=28,西=29,北=30,中=31,发=32,白=33
+        return 3;
     }
 }
 
 function shuffle(game) {
+    
     var mahjongs = game.mahjongs;
+
+	/*
+    var idx = 0;
+    for(var i = 0; i < 12; ++i){
+        game.mahjongs[idx++] = 0;
+    }
+
+    for(var i = 0; i < 12; ++i){
+        game.mahjongs[idx++] = 1;
+    }
+
+    for(var i = 0; i < 12; ++i){
+        game.mahjongs[idx++] = 2;
+    }
+
+    for(var i = 0; i < 12; ++i){
+        game.mahjongs[idx++] = 3;
+    }
+
+
+    for(var i = idx; i < game.mahjongs.length; ++i){
+        game.mahjongs[i] = 4;
+    }
+    return;
+    */
+
+    //筒 (0 ~ 8 表示筒子
     var index = 0;
     for(var i = 0; i < 9; ++i){
         for(var c = 0; c < 4; ++c){
@@ -36,18 +82,33 @@ function shuffle(game) {
             index++;
         }
     }
+
+    //条 9 ~ 17表示条子
     for(var i = 9; i < 18; ++i){
         for(var c = 0; c < 4; ++c){
             mahjongs[index] = i;
             index++;
         }
     }
+
+    //万
+    // 18 ~ 26表示万
     for(var i = 18; i < 27; ++i){
         for(var c = 0; c < 4; ++c){
             mahjongs[index] = i;
             index++;
         }
     }
+
+    //字牌 27 ~ 33表示东南西北中发白
+    //东=27, 南=28, 西=29, 北=30, 中=31, 发=32, 白=33
+    for(var i = 27; i < 34; ++i){
+        for(var c = 0; c < 4; ++c){
+            mahjongs[index] = i;
+            index++;
+        }
+    }
+
     for(var i = 0; i < mahjongs.length; ++i){
         var lastIndex = mahjongs.length - 1 - i;
         var index = Math.floor(Math.random() * lastIndex);
@@ -65,6 +126,8 @@ function mopai(game,seatIndex) {
     var mahjongs = data.holds;
     var pai = game.mahjongs[game.currentIndex];
     mahjongs.push(pai);
+
+    //统计牌的数目 ，用于快速判定（空间换时间）
     var c = data.countMap[pai];
     if(c == null) {
         c = 0;
@@ -75,7 +138,10 @@ function mopai(game,seatIndex) {
 }
 
 function deal(game){
+    //强制清0
     game.currentIndex = 0;
+
+    //每人13张 一共 13*4 ＝ 52张 庄家多一张 53张
     var seatIndex = game.button;
     for(var i = 0; i < 52; ++i){
         var mahjongs = game.gameSeats[seatIndex].holds;
@@ -87,10 +153,14 @@ function deal(game){
         seatIndex ++;
         seatIndex %= 4;
     }
+
+    //庄家多摸最后一张
     mopai(game,game.button);
+    //当前轮设置为庄家
     game.turn = game.button;
 }
 
+//检查是否可以碰
 function checkCanPeng(game,seatData,targetPai) {
     if(getMJType(targetPai) == seatData.que){
         return;
@@ -101,7 +171,10 @@ function checkCanPeng(game,seatData,targetPai) {
     }
 }
 
+//检查是否可以点杠
 function checkCanDianGang(game,seatData,targetPai){
+    //检查玩家手上的牌
+    //如果没有牌了，则不能再杠
     if(game.mahjongs.length <= game.currentIndex){
         return;
     }
@@ -116,10 +189,13 @@ function checkCanDianGang(game,seatData,targetPai){
     }
 }
 
+//检查是否可以暗杠
 function checkCanAnGang(game,seatData){
+    //如果没有牌了，则不能再杠
     if(game.mahjongs.length <= game.currentIndex){
         return;
     }
+
     for(var key in seatData.countMap){
         var pai = parseInt(key);
         if(getMJType(pai) != seatData.que){
@@ -132,10 +208,14 @@ function checkCanAnGang(game,seatData){
     }
 }
 
+//检查是否可以弯杠(自己摸起来的时候)
 function checkCanWanGang(game,seatData){
+    //如果没有牌了，则不能再杠
     if(game.mahjongs.length <= game.currentIndex){
         return;
     }
+
+    //从碰过的牌中选
     for(var i = 0; i < seatData.pengs.length; ++i){
         var pai = seatData.pengs[i];
         if(seatData.countMap[pai] == 1){
@@ -177,9 +257,11 @@ function clearAllOptions(game,seatData){
     }
 }
 
+//检查听牌
 function checkCanTingPai(game,seatData){
     seatData.tingMap = {};
     
+    //检查手上的牌是不是已打缺，如果未打缺，则不进行判定
     for(var i = 0; i < seatData.holds.length; ++i){
         var pai = seatData.holds[i];
         if(getMJType(pai) == seatData.que){
@@ -187,15 +269,20 @@ function checkCanTingPai(game,seatData){
         }   
     }
 
+    //检查是不是坎胡
     if(seatData.que != 0){
         mjutils.checkTingPai(seatData,0,9);        
     }
+
     if(seatData.que != 1){
         mjutils.checkTingPai(seatData,9,18);        
     }
+
     if(seatData.que != 2){
         mjutils.checkTingPai(seatData,18,27);        
     }
+
+    //字牌不能做坎胡（因为没有顺子），所以不需要检查
 }
 
 function getSeatIndex(userId){
@@ -235,7 +322,10 @@ function sendOperations(game,seatData,pai) {
             gang:seatData.canGang,
             gangpai:seatData.gangPai
         };
+
+        //如果可以有操作，则进行操作
         userMgr.sendMsg(seatData.userId,'game_action_push',data);
+
         data.si = seatData.seatIndex;
     }
     else{
@@ -245,6 +335,7 @@ function sendOperations(game,seatData,pai) {
 
 function moveToNextUser(game,nextSeat){
     game.fangpaoshumu = 0;
+    //找到下一个没有和牌的玩家
     if(nextSeat == null){
         game.turn ++;
         game.turn %= 4;
@@ -261,6 +352,7 @@ function doUserMoPai(game){
     turnSeat.lastFangGangSeat = -1;
     turnSeat.guoHuFan = -1;
     var pai = mopai(game,game.turn);
+    //牌摸完了，结束
     if(pai == -1){
         doGameOver(game,turnSeat.userId);
         return;
@@ -271,16 +363,29 @@ function doUserMoPai(game){
     }
 
     recordGameAction(game,game.turn,ACTION_MOPAI,pai);
+
+    //通知前端新摸的牌
     userMgr.sendMsg(turnSeat.userId,'game_mopai_push',pai);
+    //检查是否可以暗杠或者胡
+    //检查胡，直杠，弯杠
     if(!turnSeat.hued){
         checkCanAnGang(game,turnSeat);    
     }
+    
+    //如果未胡牌，或者摸起来的牌可以杠，才检查弯杠
     if(!turnSeat.hued || turnSeat.holds[turnSeat.holds.length-1] == pai){
         checkCanWanGang(game,turnSeat,pai);    
     }
+    
+
+    //检查看是否可以和
     checkCanHu(game,turnSeat,pai);
+
+    //广播通知玩家出牌方
     turnSeat.canChuPai = true;
     userMgr.broacastInRoom('game_chupai_push',turnSeat.userId,turnSeat.userId,true);
+
+    //通知玩家做对应操作
     sendOperations(game,turnSeat,game.chuPai);
 }
 
@@ -297,9 +402,13 @@ function isSameType(type,arr){
 
 function isQingYiSe(gameSeatData){
     var type = getMJType(gameSeatData.holds[0]);
+
+    //检查手上的牌
     if(isSameType(type,gameSeatData.holds) == false){
         return false;
     }
+
+    //检查杠下的牌
     if(isSameType(type,gameSeatData.angangs) == false){
         return false;
     }
@@ -309,6 +418,8 @@ function isQingYiSe(gameSeatData){
     if(isSameType(type,gameSeatData.diangangs) == false){
         return false;
     }
+
+    //检查碰牌
     if(isSameType(type,gameSeatData.pengs) == false){
         return false;
     }
@@ -348,6 +459,38 @@ function isZhongZhang(gameSeatData){
     return true;
 }
 
+function isJiangDui(gameSeatData){
+    var fn = function(arr){
+        for(var i = 0; i < arr.length; ++i){
+            var pai = arr[i];
+            if(pai != 1 && pai != 4 && pai != 7
+               && pai != 9 && pai != 13 && pai != 16
+               && pai != 18 && pai != 21 && pai != 25
+               ){
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    if(fn(gameSeatData.pengs) == false){
+        return false;
+    }
+    if(fn(gameSeatData.angangs) == false){
+        return false;
+    }
+    if(fn(gameSeatData.diangangs) == false){
+        return false;
+    }
+    if(fn(gameSeatData.wangangs) == false){
+        return false;
+    }
+    if(fn(gameSeatData.holds) == false){
+        return false;
+    }
+    return true;
+}
+
 function isTinged(seatData){
     for(var k in seatData.tingMap){
         return true;
@@ -362,7 +505,9 @@ function computeFanScore(game,fan){
     return (1 << fan) * game.conf.baseScore;
 }
 
+//是否需要查大叫(有人没有下叫)
 function needChaDaJiao(game){
+    //查叫
     var numOfHued = 0;
     var numOfTinged = 0;
     var numOfUntinged = 0;
@@ -379,9 +524,13 @@ function needChaDaJiao(game){
             numOfUntinged++;
         }
     }
+    
+    //如果没有任何一个人叫牌，则不需要查叫
     if(numOfTinged == 0){
         return false;
     }
+    
+    //如果都听牌了，也不需要查叫
     if(numOfUntinged == 0){
         return false;
     }
@@ -389,6 +538,7 @@ function needChaDaJiao(game){
 }
 
 function findMaxFanTingPai(ts){
+    //找出最大番
     var cur = null;
     for(var k in ts.tingMap){
         var tpai = ts.tingMap[k];
@@ -404,6 +554,7 @@ function findUnTingedPlayers(game){
     var arr = [];
     for(var i = 0; i < game.gameSeats.length; ++i){
         var ts = game.gameSeats[i];
+        //如果没有胡，且没有听牌
         if(!ts.hued && !isTinged(ts)){
             arr.push(i);
         }
@@ -434,6 +585,7 @@ function chaJiao(game){
     }
     for(var i = 0; i < game.gameSeats.length; ++i){
         var ts = game.gameSeats[i];
+        //如果听牌了，则未叫牌的人要给钱
         if(isTinged(ts)){
             var cur = findMaxFanTingPai(ts);
             ts.huInfo.push({
@@ -456,73 +608,251 @@ function chaJiao(game){
     }
 }
 
-function getKanShu(pai){
-    return (pai % 9) + 1;
-}
-
 function calculateResult(game,roomInfo){
+    
+    var isNeedChaDaJia = needChaDaJiao(game);
+    if(isNeedChaDaJia){
+        chaJiao(game);
+    }
+    
+    var baseScore = game.conf.baseScore;
+    
     for(var i = 0; i < game.gameSeats.length; ++i){
         var sd = game.gameSeats[i];
-        sd.numAnGang = sd.angangs.length;
-        sd.numMingGang = sd.wangangs.length + sd.diangangs.length;
-        
-        for(var j = 0; j < sd.huInfo.length; ++j){
-            var info = sd.huInfo[j];
-            if(!info.ishupai){
-                sd.numDianPao++;
-                continue;
-            }
-            
-            var hupai = info.pai;
-            var kanshu = getKanShu(hupai);
-            info.kanshu = kanshu;
-            
-            if(info.iszimo){
-                var totalWin = 0;
-                for(var t = 0; t < game.gameSeats.length; ++t){
-                    if(t != i){
-                        var loser = game.gameSeats[t];
-                        var pay = kanshu * 2;
-                        if(loser.score < pay){
-                            pay = loser.score;
-                        }
-                        if(pay > 0){
-                            loser.score -= pay;
-                            totalWin += pay;
-                        }
+        //对所有胡牌的玩家进行统计
+        if(isTinged(sd)){
+            //收杠钱
+            var additonalscore = 0;
+            for(var a = 0; a < sd.actions.length; ++a){
+                var ac = sd.actions[a];
+                if(ac.type == "fanggang"){
+                    var ts = game.gameSeats[ac.targets[0]];
+                    //检查放杠的情况，如果目标没有和牌，且没有叫牌，则不算 用于优化前端显示
+                    if(isNeedChaDaJia && (ts.hued) == false && (isTinged(ts) == false)){
+                        ac.state = "nop";
                     }
                 }
-                sd.score += totalWin;
-                sd.numZiMo++;
-            }
-            else{
-                var paoshou = game.gameSeats[info.target];
-                var paoshouPay = kanshu * 2;
-                if(paoshou.score < paoshouPay){
-                    paoshouPay = paoshou.score;
+                else if(ac.type == "maozhuanyu"){
+                    //对于呼叫转移，如果对方没有叫牌，表示不得行
+                    if(isTinged(ac.owner)){
+                        //如果
+                        var ref = ac.ref;
+                        var acscore = ref.score;
+                        var total = ref.targets.length * acscore * baseScore;
+                        additonalscore += total;
+                        //扣掉目标方的分
+                        if(ref.payTimes == 0){
+                            for(var t = 0; t < ref.targets.length; ++t){
+                                var six = ref.targets[t];
+                                deductScore(game.gameSeats[six], acscore * baseScore);
+                            }                            
+                        }
+                        else{
+                            //如果已经被扣过一次了，则由杠牌这家赔
+                            deductScore(ac.owner, total);
+                        }
+                        ref.payTimes++;
+                        ac.owner = null;
+                        ac.ref = null;
+                    }
                 }
-                if(paoshouPay > 0){
-                    paoshou.score -= paoshouPay;
-                    sd.score += paoshouPay;
+            }
+            
+            if(isQingYiSe(sd)){
+                sd.qingyise = true;
+            }
+            
+            if(game.conf.menqing){
+                sd.isMenQing = isMenQing(sd);                
+            }
+            
+            //金钩胡
+            if(sd.holds.length == 1 || sd.holds.length == 2){
+                sd.isJinGouHu = true;
+            }
+            
+            sd.numAnGang = sd.angangs.length;
+            sd.numMingGang = sd.wangangs.length + sd.diangangs.length;
+            
+            //进行胡牌结算
+            for(var j = 0; j < sd.huInfo.length; ++j){
+                var info = sd.huInfo[j];
+                if(!info.ishupai){
+                    sd.numDianPao++;
+                    continue;
+                }
+                //统计自己的番子和分数
+                //基础番(平胡0番，对对胡1番、七对2番) + 清一色2番 + 杠+1番
+                //杠上花+1番，杠上炮+1番 抢杠胡+1番，金钩胡+1番，海底胡+1番
+                var fan = info.fan;
+                sd.holds.push(info.pai);
+                if(sd.countMap[info.pai] != null){
+                    sd.countMap[info.pai] ++;
+                }
+                else{
+                    sd.countMap[info.pai] = 1;
                 }
                 
-                for(var t = 0; t < game.gameSeats.length; ++t){
-                    if(t != i && t != info.target){
-                        var loser = game.gameSeats[t];
-                        var pay = kanshu;
-                        if(loser.score < pay){
-                            pay = loser.score;
+                if(sd.qingyise){
+                    fan += 2;
+                }
+                
+                //金钩胡
+                if(sd.isJinGouHu){
+                    fan += 1;
+                }
+                
+                if(info.isHaiDiHu){
+                    fan += 1;
+                }
+                
+                if(game.conf.tiandihu){
+                    if(info.isTianHu){
+                        fan += 3;
+                    }
+                    else if(info.isDiHu){
+                        fan += 2;
+                    }
+                }
+                
+                var isjiangdui = false;
+                if(game.conf.jiangdui){
+                    if(info.pattern == "7pairs"){
+                        if(info.numofgen > 0){
+                            info.numofgen -= 1;
+                            info.pattern == "l7pairs";
+                            isjiangdui = isJiangDui(sd);
+                            if(isjiangdui){
+                                info.pattern == "j7paris";
+                                fan += 2;    
+                            }   
+                            else{
+                                fan += 1;
+                            }
                         }
-                        if(pay > 0){
-                            loser.score -= pay;
-                            sd.score += pay;
+                    }
+                    else if(info.pattern == "duidui"){
+                        isjiangdui = isJiangDui(sd);
+                        if(isjiangdui){
+                            info.pattern = "jiangdui";
+                            fan += 2;   
+                        }
+                    }   
+                }
+                
+                if(game.conf.menqing){
+                    //不是将对，才检查中张
+                    if(!isjiangdui){
+                        sd.isZhongZhang = isZhongZhang(sd);
+                        if(sd.isZhongZhang){
+                            fan += 1;
+                        }                
+                    }
+                    
+                    if(sd.isMenQing){
+                        fan += 1;
+                    }                
+                }
+                
+                fan += info.numofgen;
+                
+                if(info.action == "ganghua" || info.action == "dianganghua" || info.action == "gangpaohu" || info.action == "qiangganghu"){
+                    fan += 1;
+                }
+                
+                var extraScore = 0;
+                if(info.iszimo){
+                    if(game.conf.zimo == 0){
+                        //自摸加底
+                        extraScore = baseScore;
+                    }
+                    else if(game.conf.zimo == 1){
+                        fan += 1;
+                    }
+                    else{
+                        //nothing.
+                    }
+                }
+                //和牌的玩家才加这个分
+                var score = computeFanScore(game,fan) + extraScore;
+                
+                //坎胡特殊钱计算规则
+                if(info.pattern == "kanhu"){
+                    var kanScore = info.fan * baseScore; //坎数*基础分
+                    if(info.iszimo){
+                        //坎胡自摸：所有人支付 坎数*2
+                        var totalScore = 0;
+                        for(var t = 0; t < game.gameSeats.length; ++t){
+                            if(t != i){
+                                var payScore = kanScore * 2;
+                                game.gameSeats[t].score -= payScore;
+                                totalScore += payScore;
+                            }
+                        }
+                        sd.score += totalScore;
+                        sd.numZiMo++;
+                    }
+                    else{
+                        //坎胡点炮：点炮手支付 坎数*2，其他人支付 坎数*1
+                        var totalScore = 0;
+                        for(var t = 0; t < game.gameSeats.length; ++t){
+                            if(t != i){
+                                var payScore = (t == info.target) ? kanScore * 2 : kanScore;
+                                deductScore(game.gameSeats[t], payScore);
+                                totalScore += payScore;
+                            }
+                        }
+                        sd.score += totalScore;
+                        sd.numJiePao++;
+                    }
+                }
+                else if(info.action == "chadajiao"){
+                    //收所有没有叫牌的人的钱
+                    for(var t = 0; t < game.gameSeats.length; ++t){
+                        if(!isTinged(game.gameSeats[t])){
+                            deductScore(game.gameSeats[t], score);
+                            sd.score += score;
+                            //被查叫次数
+                            if(game.gameSeats[t] != sd){
+                                game.gameSeats[t].numChaJiao++;    
+                            }           
                         }
                     }
                 }
-                sd.numJiePao++;
+                else if(info.iszimo){
+                    //收所有人的钱
+                    sd.score += score * game.gameSeats.length;
+                    for(var t = 0; t < game.gameSeats.length; ++t){
+                        deductScore(game.gameSeats[t], score);
+                    }
+                    sd.numZiMo++;
+                }
+                else{
+                    //收放炮者的钱
+                    sd.score += score;
+                    deductScore(game.gameSeats[info.target], score);
+                    sd.numJiePao++;
+                }
+                
+                //撤除胡的那张牌
+                sd.holds.pop();
+                sd.countMap[info.pai]--;
+                
+                if(fan > game.conf.maxFan){
+                    fan = game.conf.maxFan;
+                }
+                info.fan = fan;
             }
-            
-            info.fan = kanshu;
+            //一定要用 += 。 因为此时的sd.score可能是负的
+            sd.score += additonalscore;
+        }
+        else{
+            for(var a = sd.actions.length -1; a >= 0; --a){
+                var ac = sd.actions[a];
+                if(ac.type == "angang" || ac.type == "wangang" || ac.type == "diangang"){
+                    sd.actions.splice(a,1);
+                }
+            }
         }
     }
 }
@@ -558,6 +888,7 @@ function doGameOver(game,userId,forceEnd){
         }
         
         userMgr.broacastInRoom('game_over_push',{results:results,endinfo:endinfo},userId,true);
+        //如果局数已够，则进行整体结算，并关闭房间
         if(isEnd){
             setTimeout(function(){
                 if(roomInfo.numOfGames > 1){
@@ -580,7 +911,7 @@ function doGameOver(game,userId,forceEnd){
             var sd = game.gameSeats[i];
 
             rs.ready = false;
-            rs.score = sd.score;
+            rs.score += sd.score
             rs.numZiMo += sd.numZiMo;
             rs.numJiePao += sd.numJiePao;
             rs.numDianPao += sd.numDianPao;
@@ -598,6 +929,9 @@ function doGameOver(game,userId,forceEnd){
                 holds:sd.holds,
                 score:sd.score,
                 totalscore:rs.score,
+                qingyise:sd.qingyise,
+                menqing:sd.isMenQing,
+                jingouhu:sd.isJinGouHu,
                 huinfo:sd.huInfo,                
             }
             
@@ -608,28 +942,30 @@ function doGameOver(game,userId,forceEnd){
             }
             results.push(userRT);
 
+
             dbresult[i] = sd.score;
             delete gameSeatsOfUsers[sd.userId];
         }
         delete games[roomId];
 
         var old = roomInfo.nextButton;
-        var bankerWon = false;
-        for(var i = 0; i < game.gameSeats.length; ++i){
-            if(game.gameSeats[i].hued && i == game.button){
-                bankerWon = true;
-                break;
-            }
-        }
-        
-        if(bankerWon){
-            //庄家赢牌连庄
+        if(game.yipaoduoxiang >= 0){
+            roomInfo.nextButton = game.yipaoduoxiang;
         }
         else if(game.firstHupai >= 0){
-            roomInfo.nextButton = game.firstHupai;
+            //坎胡规则：庄家胡连庄，其他人胡牌则按东→北→西→南顺序轮转
+            if(game.firstHupai == game.button){
+                //庄家胡，连庄
+                roomInfo.nextButton = game.button;
+            }
+            else{
+                //其他人胡，下一家坐庄（按东0→北1→西2→南3→东0轮转）
+                roomInfo.nextButton = (game.button + 1) % 4;
+            }
         }
         else{
-            roomInfo.nextButton = (game.button + 1) % 4;
+            //平局（没人胡牌）：庄家不变，钱不变
+            roomInfo.nextButton = game.button;
         }
 
         if(old != roomInfo.nextButton){
@@ -641,11 +977,18 @@ function doGameOver(game,userId,forceEnd){
         fnNoticeResult(true);   
     }
     else{
+        //保存游戏
         store_game(game,function(ret){
             db.update_game_result(roomInfo.uuid,game.gameIndex,dbresult);
+            
+            //记录玩家操作
             var str = JSON.stringify(game.actionList);
             db.update_game_action_records(roomInfo.uuid,game.gameIndex,str); 
+        
+            //保存游戏局数
             db.update_num_of_turns(roomId,roomInfo.numOfGames);
+            
+            //如果是第一次，则扣除房卡
             if(roomInfo.numOfGames == 1){
                 var cost = 2;
                 if(roomInfo.conf.maxGames == 8){
@@ -673,7 +1016,8 @@ function recordUserAction(game,seatData,type,target){
     else{
         for(var i = 0; i < game.gameSeats.length; ++i){
             var s = game.gameSeats[i];
-            if(i != seatData.seatIndex){
+            //血流成河，所有自摸，暗杠，弯杠，都算三家
+            if(i != seatData.seatIndex/* && s.hued == false*/){
                 d.targets.push(i);
             }
         }        
@@ -712,6 +1056,7 @@ exports.setReady = function(userId,callback){
                     return;
                 }
             }
+            //4个人到齐了，并且都准备好了，则开始新的一局
             exports.begin(roomId);
         }
     }
@@ -743,6 +1088,7 @@ exports.setReady = function(userId,callback){
                 hued:sd.hued,
                 huinfo:sd.huInfo,
                 iszimo:sd.iszimo,
+                score:sd.score,
             }
             if(sd.userId == userId){
                 s.holds = sd.holds;
@@ -755,6 +1101,7 @@ exports.setReady = function(userId,callback){
             data.seats.push(s);
         }
 
+        //同步整个信息给客户端
         userMgr.sendMsg(userId,'game_sync_push',data);
         sendOperations(game,seatData,game.chuPai);
     }
@@ -815,6 +1162,7 @@ function store_game(game,callback){
     db.create_game(game.roomInfo.uuid,game.gameIndex,game.baseInfoJson,callback);
 }
 
+//开始新的一局
 exports.begin = function(roomId) {
     var roomInfo = roomMgr.getRoom(roomId);
     if(roomInfo == null){
@@ -849,33 +1197,66 @@ exports.begin = function(roomId) {
         var data = game.gameSeats[i] = {};
 
         data.game = game;
+
         data.seatIndex = i;
+
         data.userId = seats[i].userId;
+        //持有的牌
         data.holds = [];
+        //打出的牌
         data.folds = [];
+        //暗杠的牌
         data.angangs = [];
+        //点杠的牌
         data.diangangs = [];
+        //弯杠的牌
         data.wangangs = [];
+        //碰了的牌
         data.pengs = [];
+        //缺一门（默认-1，表示无定缺）
         data.que = -1;
+
+        //换三张的牌
         data.huanpais = null;
+
+        //玩家手上的牌的数目，用于快速判定碰杠
         data.countMap = {};
+        //玩家听牌，用于快速判定胡了的番数
         data.tingMap = {};
         data.pattern = "";
+
+        //是否可以杠
         data.canGang = false;
+        //用于记录玩家可以杠的牌
         data.gangPai = [];
+
+        //是否可以碰
         data.canPeng = false;
+        //是否可以胡
         data.canHu = false;
+        //是否可以出牌
         data.canChuPai = false;
+
+        //如果guoHuFan >=0 表示处于过胡状态，
+        //如果过胡状态，那么只能胡大于过胡番数的牌
         data.guoHuFan = -1;
+
+        //是否胡了
         data.hued = false;
+        //
         data.actions = [];
+
+        //是否是自摸
         data.iszimo = false;
         data.isGangHu = false;
         data.fan = 0;
-        data.score = seats[i].score;
+        data.score = 0;
         data.huInfo = [];
+        
+        
         data.lastFangGangSeat = -1;
+        
+        //统计信息
         data.numZiMo = 0;
         data.numJiePao = 0;
         data.numDianPao = 0;
@@ -886,27 +1267,70 @@ exports.begin = function(roomId) {
         gameSeatsOfUsers[data.userId] = data;
     }
     games[roomId] = game;
+    //洗牌
     shuffle(game);
+    //发牌
     deal(game);
+
+    
 
     var numOfMJ = game.mahjongs.length - game.currentIndex;
     var huansanzhang = roomInfo.conf.hsz;
 
     for(var i = 0; i < seats.length; ++i){
+        //开局时，通知前端必要的数据
         var s = seats[i];
+        //通知玩家手牌
         userMgr.sendMsg(s.userId,'game_holds_push',game.gameSeats[i].holds);
+        //通知还剩多少张牌
         userMgr.sendMsg(s.userId,'mj_count_push',numOfMJ);
+        //通知还剩多少局
         userMgr.sendMsg(s.userId,'game_num_push',roomInfo.numOfGames);
+        //通知游戏开始
         userMgr.sendMsg(s.userId,'game_begin_push',game.button);
 
         if(huansanzhang == true){
             game.state = "huanpai";
+            //通知准备换牌
             userMgr.sendMsg(s.userId,'game_huanpai_push');
         }
         else{
-            game.state = "dingque";
-            userMgr.sendMsg(s.userId,'game_dingque_push');
+            // 跳过定缺阶段，直接进入 playing 状态
+            game.state = "playing";
+            // 通知游戏开始
+            userMgr.sendMsg(s.userId,'game_playing_push');
         }
+    }
+
+    // 如果不使用换三张，直接进入游戏状态
+    if(!huansanzhang){
+        construct_game_base_info(game);
+        
+        // 进行听牌检查
+        for(var i = 0; i < game.gameSeats.length; ++i){
+            var duoyu = -1;
+            var gs = game.gameSeats[i];
+            if(gs.holds.length == 14){
+                duoyu = gs.holds.pop();
+                gs.countMap[duoyu] -= 1;
+            }
+            checkCanTingPai(game,gs);
+            if(duoyu >= 0){
+                gs.holds.push(duoyu);
+                gs.countMap[duoyu] ++;
+            }
+        }
+        
+        var turnSeat = game.gameSeats[game.turn];
+        // 通知玩家出牌方
+        turnSeat.canChuPai = true;
+        userMgr.broacastInRoom('game_chupai_push',turnSeat.userId,turnSeat.userId,true);
+        // 检查是否可以暗杠或者胡
+        checkCanAnGang(game,turnSeat);
+        // 检查胡 用最后一张来检查
+        checkCanHu(game,turnSeat,turnSeat.holds[turnSeat.holds.length - 1]);
+        // 通知前端
+        sendOperations(game,turnSeat,game.chuPai);
     }
 };
 
@@ -975,13 +1399,17 @@ exports.huanSanZhang = function(userId,p1,p2,p3){
             userMgr.sendMsg(sd.userId,'huanpai_notify',rd);
         }
     }
+    
 
+    //如果还有未换牌的玩家，则继承等待
     for(var i = 0; i < game.gameSeats.length; ++i){
         if(game.gameSeats[i].huanpais == null){
             return;
         }
     }
 
+
+    //换牌函数
     var fn = function(s1,huanjin){
         for(var i = 0; i < huanjin.length; ++i){
             var p = huanjin[i];
@@ -993,9 +1421,11 @@ exports.huanSanZhang = function(userId,p1,p2,p3){
         }
     }
 
+    //开始换牌
     var f = Math.random();
     var s = game.gameSeats;
     var huanpaiMethod = 0;
+    //对家换牌
     if(f < 0.33){
         fn(s[0],s[2].huanpais);
         fn(s[1],s[3].huanpais);
@@ -1003,6 +1433,7 @@ exports.huanSanZhang = function(userId,p1,p2,p3){
         fn(s[3],s[1].huanpais);
         huanpaiMethod = 0;
     }
+    //换下家的牌
     else if(f < 0.66){
         fn(s[0],s[1].huanpais);
         fn(s[1],s[2].huanpais);
@@ -1010,6 +1441,7 @@ exports.huanSanZhang = function(userId,p1,p2,p3){
         fn(s[3],s[0].huanpais);
         huanpaiMethod = 1;
     }
+    //换上家的牌
     else{
         fn(s[0],s[3].huanpais);
         fn(s[1],s[0].huanpais);
@@ -1023,13 +1455,45 @@ exports.huanSanZhang = function(userId,p1,p2,p3){
     }
     game.huanpaiMethod = huanpaiMethod;    
 
-    game.state = "dingque";
+    // 跳过定缺阶段，直接进入 playing 状态
+    game.state = "playing";
     for(var i = 0; i < s.length; ++i){
         var userId = s[i].userId;
         userMgr.sendMsg(userId,'game_huanpai_over_push',rd);
+
         userMgr.sendMsg(userId,'game_holds_push',s[i].holds);
-        userMgr.sendMsg(userId,'game_dingque_push');
+        // 通知游戏开始
+        userMgr.sendMsg(userId,'game_playing_push');
     }
+
+    // 换牌完成后直接进入游戏状态
+    construct_game_base_info(game);
+    
+    // 进行听牌检查
+    for(var i = 0; i < game.gameSeats.length; ++i){
+        var duoyu = -1;
+        var gs = game.gameSeats[i];
+        if(gs.holds.length == 14){
+            duoyu = gs.holds.pop();
+            gs.countMap[duoyu] -= 1;
+        }
+        checkCanTingPai(game,gs);
+        if(duoyu >= 0){
+            gs.holds.push(duoyu);
+            gs.countMap[duoyu] ++;
+        }
+    }
+    
+    var turnSeat = game.gameSeats[game.turn];
+    // 通知玩家出牌方
+    turnSeat.canChuPai = true;
+    userMgr.broacastInRoom('game_chupai_push',turnSeat.userId,turnSeat.userId,true);
+    // 检查是否可以暗杠或者胡
+    checkCanAnGang(game,turnSeat);
+    // 检查胡 用最后一张来检查
+    checkCanHu(game,turnSeat,turnSeat.holds[turnSeat.holds.length - 1]);
+    // 通知前端
+    sendOperations(game,turnSeat,game.chuPai);
 };
 
 exports.dingQue = function(userId,type){
@@ -1040,6 +1504,13 @@ exports.dingQue = function(userId,type){
     }
 
     var game = seatData.game;
+    
+    // 如果游戏状态已经是 playing（跳过了定缺阶段），直接返回成功
+    if(game.state == "playing"){
+        console.log("game is already in playing state, skip dingque");
+        return;
+    }
+    
     if(game.state != "dingque"){
         console.log("can't recv dingQue when game.state == " + game.state);
         return;
@@ -1050,7 +1521,10 @@ exports.dingQue = function(userId,type){
     }
 
     seatData.que = type;
+    
 
+    //检查玩家可以做的动作
+    //如果4个人都定缺了，通知庄家出牌
     if(game.numOfQue == 4){
         construct_game_base_info(game);
         
@@ -1061,6 +1535,7 @@ exports.dingQue = function(userId,type){
         userMgr.broacastInRoom('game_dingque_finish_push',arr,seatData.userId,true);
         userMgr.broacastInRoom('game_playing_push',null,seatData.userId,true);
 
+        //进行听牌检查
         for(var i = 0; i < game.gameSeats.length; ++i){
             var duoyu = -1;
             var gs = game.gameSeats[i];
@@ -1077,10 +1552,15 @@ exports.dingQue = function(userId,type){
         
         var turnSeat = game.gameSeats[game.turn];
         game.state = "playing";
+        //通知玩家出牌方
         turnSeat.canChuPai = true;
         userMgr.broacastInRoom('game_chupai_push',turnSeat.userId,turnSeat.userId,true);
+        //检查是否可以暗杠或者胡
+        //直杠
         checkCanAnGang(game,turnSeat);
+        //检查胡 用最后一张来检查
         checkCanHu(game,turnSeat,turnSeat.holds[turnSeat.holds.length - 1]);
+        //通知前端
         sendOperations(game,turnSeat,game.chuPai);
     }
     else{
@@ -1099,6 +1579,7 @@ exports.chuPai = function(userId,pai){
 
     var game = seatData.game;
     var seatIndex = seatData.seatIndex;
+    //如果不该他出，则忽略
     if(game.turn != seatData.seatIndex){
         console.log("not your turn.");
         return;
@@ -1114,6 +1595,7 @@ exports.chuPai = function(userId,pai){
         return;
     }
     
+    //如果是胡了的人，则只能打最后一张牌
     if(seatData.hued){
         if(seatData.holds[seatData.holds.length - 1] != pai){
             console.log('only deal last one when hued.');
@@ -1121,6 +1603,7 @@ exports.chuPai = function(userId,pai){
         }
     }
 
+    //从此人牌中扣除
     var index = seatData.holds.indexOf(pai);
     if(index == -1){
         console.log("holds:" + seatData.holds);
@@ -1139,28 +1622,46 @@ exports.chuPai = function(userId,pai){
     checkCanTingPai(game,seatData);
     userMgr.broacastInRoom('game_chupai_notify_push',{userId:seatData.userId,pai:pai},seatData.userId,true);
     
+    //如果出的牌可以胡，则算过胡
     if(seatData.tingMap[game.chuPai]){
         seatData.guoHuFan = seatData.tingMap[game.chuPai].fan;
     }
 
+    //检查是否有人要胡，要碰 要杠
     var hasActions = false;
-    for(var i = 0; i < game.gameSeats.length; ++i){
-        if(game.turn == i){
-            continue;
-        }
+    var firstHuSeat = -1;  // 记录第一个可以胡的人（一炮一胡）
+    
+    // 按顺序检查（从出牌者下一家开始）
+    for(var j = 1; j <= 4; ++j){
+        var i = (game.turn + j) % 4;
         var ddd = game.gameSeats[i];
+        
+        //未胡牌的才检查杠和碰
         if(!ddd.hued){
             checkCanPeng(game,ddd,pai);
             checkCanDianGang(game,ddd,pai);            
         }
 
         checkCanHu(game,ddd,pai);
+        
+        // 处理过胡情况
         if(seatData.lastFangGangSeat == -1){
             if(ddd.canHu && ddd.guoHuFan >= 0 && ddd.tingMap[pai].fan <= ddd.guoHuFan){
                 console.log("ddd.guoHuFan:" + ddd.guoHuFan);
                 ddd.canHu = false;
                 userMgr.sendMsg(ddd.userId,'guohu_push');            
             }     
+        }
+        
+        // 一炮一胡：只有第一个可以胡的人能胡
+        if(ddd.canHu){
+            if(firstHuSeat == -1){
+                firstHuSeat = i;
+            }
+            else{
+                // 不是第一个可以胡的人，设置为不能胡
+                ddd.canHu = false;
+            }
         }
 
         if(hasOperations(ddd)){
@@ -1169,6 +1670,7 @@ exports.chuPai = function(userId,pai){
         }
     }
     
+    //如果没有人有操作，则向下一家发牌，并通知他出牌
     if(!hasActions){
         setTimeout(function(){
             userMgr.broacastInRoom('guo_notify_push',{userId:seatData.userId,pai:game.chuPai},seatData.userId,true);
@@ -1189,21 +1691,25 @@ exports.peng = function(userId){
 
     var game = seatData.game;
 
+    //如果是他出的牌，则忽略
     if(game.turn == seatData.seatIndex){
         console.log("it's your turn.");
         return;
     }
 
+    //如果没有碰的机会，则不能再碰
     if(seatData.canPeng == false){
         console.log("seatData.peng == false");
         return;
     }
 
+    //和的了，就不要再来了
     if(seatData.hued){
         console.log('you have already hued. no kidding plz.');
         return;
     }
     
+    //如果有人可以胡牌，则需要等待
     var i = game.turn;
     while(true){
         var i = (i + 1)%4;
@@ -1221,6 +1727,7 @@ exports.peng = function(userId){
 
     clearAllOptions(game);
 
+    //验证手上的牌的数目
     var pai = game.chuPai;
     var c = seatData.countMap[pai];
     if(c == null || c < 2){
@@ -1230,6 +1737,9 @@ exports.peng = function(userId){
         return;
     }
 
+    //进行碰牌处理
+    //扣掉手上的牌
+    //从此人牌中扣除
     for(var i = 0; i < 2; ++i){
         var index = seatData.holds.indexOf(pai);
         if(index == -1){
@@ -1244,10 +1754,13 @@ exports.peng = function(userId){
 
     recordGameAction(game,seatData.seatIndex,ACTION_PENG,pai);
 
+    //广播通知其它玩家
     userMgr.broacastInRoom('peng_notify_push',{userid:seatData.userId,pai:pai},seatData.userId,true);
 
+    //碰的玩家打牌
     moveToNextUser(game,seatData.seatIndex);
     
+    //广播通知玩家出牌方
     seatData.canChuPai = true;
     userMgr.broacastInRoom('game_chupai_push',seatData.userId,seatData.userId,true);
 };
@@ -1269,6 +1782,7 @@ exports.isPlaying = function(userId){
 function checkCanQiangGang(game,turnSeat,seatData,pai){
     var hasActions = false;
     for(var i = 0; i < game.gameSeats.length; ++i){
+        //杠牌者不检查
         if(seatData.seatIndex == i){
             continue;
         }
@@ -1304,10 +1818,14 @@ function doGang(game,turnSeat,seatData,gangtype,numOfCnt,pai){
             seatData.pengs.splice(idx,1);
         }
         
+        //如果最后一张牌不是杠的牌，则认为是转手杠
         if(seatData.holds[seatData.holds.length - 1] != pai){
             isZhuanShouGang = true;
         }
     }
+    //进行碰牌处理
+    //扣掉手上的牌
+    //从此人牌中扣除
     for(var i = 0; i < numOfCnt; ++i){
         var index = seatData.holds.indexOf(pai);
         if(index == -1){
@@ -1321,6 +1839,7 @@ function doGang(game,turnSeat,seatData,gangtype,numOfCnt,pai){
 
     recordGameAction(game,seatData.seatIndex,ACTION_GANG,pai);
 
+    //记录下玩家的杠牌
     if(gangtype == "angang"){
         seatData.angangs.push(pai);
         var ac = recordUserAction(game,seatData,"angang");
@@ -1346,11 +1865,15 @@ function doGang(game,turnSeat,seatData,gangtype,numOfCnt,pai){
     }
 
     checkCanTingPai(game,seatData);
+    //通知其他玩家，有人杠了牌
     userMgr.broacastInRoom('gang_notify_push',{userid:seatData.userId,pai:pai,gangtype:gangtype},seatData.userId,true);
 
+    //变成自己的轮子
     moveToNextUser(game,seatIndex);
+    //再次摸牌
     doUserMoPai(game);   
     
+    //只能放在这里。因为过手就会清除杠牌标记
     seatData.lastFangGangSeat = gameTurn;
 }
 
@@ -1364,6 +1887,7 @@ exports.gang = function(userId,pai){
     var seatIndex = seatData.seatIndex;
     var game = seatData.game;
 
+    //如果没有杠的机会，则不能再杠
     if(seatData.canGang == false) {
         console.log("seatData.gang == false");
         return;
@@ -1371,6 +1895,7 @@ exports.gang = function(userId,pai){
     
     var numOfCnt = seatData.countMap[pai];
 
+    //胡了的，只能直杠
     if(numOfCnt != 1 && seatData.hued){
         console.log('you have already hued. no kidding plz.');
         return;
@@ -1381,6 +1906,7 @@ exports.gang = function(userId,pai){
         return;   
     }
     
+    //如果有人可以胡牌，则需要等待
     var i = game.turn;
     while(true){
         var i = (i + 1)%4;
@@ -1395,7 +1921,10 @@ exports.gang = function(userId,pai){
         }
     }
 
+    
+
     var gangtype = ""
+    //弯杠 去掉碰牌
     if(numOfCnt == 1){
         gangtype = "wangang"
     }
@@ -1416,6 +1945,7 @@ exports.gang = function(userId,pai){
     
     userMgr.broacastInRoom('hangang_notify_push',seatIndex,seatData.userId,true);
     
+    //如果是弯杠，则需要检查是否可以抢杠
     var turnSeat = game.gameSeats[game.turn];
     if(numOfCnt == 1){
         var canQiangGang = checkCanQiangGang(game,turnSeat,seatData,pai);
@@ -1437,11 +1967,13 @@ exports.hu = function(userId){
     var seatIndex = seatData.seatIndex;
     var game = seatData.game;
 
+    //如果他不能和牌，那和个啥啊
     if(seatData.canHu == false){
         console.log("invalid request.");
         return;
     }
 
+    //标记为和牌
     seatData.hued = true;
     var hupai = game.chuPai;
     var isZimo = false;
@@ -1526,6 +2058,7 @@ exports.hu = function(userId){
         huData.pai = hupai;
 
         var at = "hu";
+        //炮胡
         if(turnSeat.lastFangGangSeat >= 0){
             at = "gangpaohu";
         }
@@ -1534,6 +2067,7 @@ exports.hu = function(userId){
         huData.iszimo = false;
         huData.target = game.turn;
 
+        //毛转雨
         if(turnSeat.lastFangGangSeat >= 0){
             for(var i = turnSeat.actions.length-1; i >= 0; --i){
                 var t = turnSeat.actions[i];
@@ -1552,6 +2086,7 @@ exports.hu = function(userId){
             }
         }
 
+        //记录玩家放炮信息
         var fs = game.gameSeats[game.turn];
         if(at == "gangpaohu"){
             at = "gangpao";
@@ -1578,10 +2113,12 @@ exports.hu = function(userId){
         game.firstHupai = seatIndex;
     }
 
+    //保存番数
     var ti = seatData.tingMap[hupai];
     huData.fan = ti.fan;
     huData.pattern = ti.pattern;
     huData.iszimo = isZimo;
+    //如果是最后一张牌，则认为是海底胡
     huData.isHaiDiHu = game.currentIndex == game.mahjongs.length;
     
     if(game.conf.tiandihu){
@@ -1595,8 +2132,10 @@ exports.hu = function(userId){
 
     clearAllOptions(game,seatData);
 
+    //通知前端，有人和牌了
     userMgr.broacastInRoom('hu_push',{seatindex:seatIndex,iszimo:isZimo,hupai:notify},seatData.userId,true);
     
+    //
     if(game.lastHuPaiSeat == -1){
         game.lastHuPaiSeat = seatIndex;
     }
@@ -1608,6 +2147,7 @@ exports.hu = function(userId){
         }
     }
     
+    //清空所有非胡牌操作
     for(var i = 0; i < game.gameSeats.length; ++i){
         var ddd = game.gameSeats[i];
         ddd.canPeng = false;
@@ -1616,6 +2156,7 @@ exports.hu = function(userId){
         sendOperations(game,ddd,hupai);
     }
 
+    //如果还有人可以胡牌，则等待
     for(var i = 0; i < game.gameSeats.length; ++i){
         var ddd = game.gameSeats[i];
         if(ddd.canHu){
@@ -1623,6 +2164,7 @@ exports.hu = function(userId){
         }
     }
     
+    //和牌的下家继续打
     clearAllOptions(game);
     game.turn = game.lastHuPaiSeat;
     moveToNextUser(game);
@@ -1639,16 +2181,19 @@ exports.guo = function(userId){
     var seatIndex = seatData.seatIndex;
     var game = seatData.game;
 
+    //如果玩家没有对应的操作，则也认为是非法消息
     if((seatData.canGang || seatData.canPeng || seatData.canHu) == false){
         console.log("no need guo.");
         return;
     }
 
+    //如果是玩家自己的轮子，不是接牌，则不需要额外操作
     var doNothing = game.chuPai == -1 && game.turn == seatIndex;
 
     userMgr.sendMsg(seatData.userId,"guo_result");
     clearAllOptions(game,seatData);
     
+    //这里还要处理过胡的情况
     if(game.chuPai >= 0 && seatData.canHu){
         seatData.guoHuFan = seatData.tingMap[game.chuPai].fan;
     }
@@ -1657,6 +2202,7 @@ exports.guo = function(userId){
         return;
     }
     
+    //如果还有人可以操作，则等待
     for(var i = 0; i < game.gameSeats.length; ++i){
         var ddd = game.gameSeats[i];
         if(hasOperations(ddd)){
@@ -1664,6 +2210,7 @@ exports.guo = function(userId){
         }
     }
 
+    //如果是已打出的牌，则需要通知。
     if(game.chuPai >= 0){
         var uid = game.gameSeats[game.turn].userId;
         userMgr.broacastInRoom('guo_notify_push',{userId:uid,pai:game.chuPai},seatData.userId,true);
@@ -1673,12 +2220,14 @@ exports.guo = function(userId){
     
     
     var qiangGangContext = game.qiangGangContext;
+    //清除所有的操作
     clearAllOptions(game);
     
     if(qiangGangContext != null && qiangGangContext.isValid){
         doGang(game,qiangGangContext.turnSeat,qiangGangContext.seatData,"wangang",1,qiangGangContext.pai);        
     }
     else{
+        //下家摸牌
         moveToNextUser(game);
         doUserMoPai(game);   
     }

@@ -209,7 +209,11 @@ cc.Class({
             return;
         }
         console.log("onCreateRoomClicked");
-        this.createRoomWin.active = true;   
+        // 直接创建房间，不弹出设置窗口
+        var createRoomComponent = this.createRoomWin.getComponent("CreateRoom");
+        if(createRoomComponent){
+            createRoomComponent.createRoom();
+        }
     },
     
     onBtnTaobaoClicked:function(){

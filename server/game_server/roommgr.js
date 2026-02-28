@@ -61,6 +61,7 @@ function constructRoomFromDb(dbdata){
 }
 
 exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
+	console.log('createRoom called, roomConf:', roomConf);
 	if(
 		roomConf.difen == null
 		|| roomConf.zimo == null
@@ -71,6 +72,7 @@ exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
 		|| roomConf.dianganghua == null
 		|| roomConf.menqing == null
 		|| roomConf.tiandihu == null){
+		console.log('createRoom failed: invalid conf parameters');
 		callback(1,null);
 		return;
 	}

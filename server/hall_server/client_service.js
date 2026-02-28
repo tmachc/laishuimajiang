@@ -135,8 +135,8 @@ app.get('/create_private_room',function(req,res){
 		//验证玩家状态
 		db.get_room_id_of_user(userId,function(roomId){
 			if(roomId != null){
-				http.send(res,-1,"user is playing in room now.");
-				return;
+				//如果用户已经在房间中，先清除状态（可能是之前的残留）
+				db.set_room_id_of_user(userId,null);
 			}
 			//创建房间
 			room_service.createRoom(account,userId,conf,function(err,roomId){
@@ -298,6 +298,6 @@ app.get('/get_message',function(req,res){
 
 exports.start = function($config){
 	config = $config;
-	app.listen(config.CLEINT_PORT);
-	console.log("client service is listening on port " + config.CLEINT_PORT);
+	app.listen(config.CLEINT_PORT, '0.0.0.0');
+	console.log("client service is listening on 0.0.0.0:" + config.CLEINT_PORT);
 };

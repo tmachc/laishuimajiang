@@ -94,7 +94,7 @@ cc.Class({
         }
         
         if(this._lblScore != null){
-            this._lblScore.string = this._score;            
+            this._lblScore.string = this._score != null ? this._score.toString() : "0";            
         }        
         
         if(this._nddayingjia != null){

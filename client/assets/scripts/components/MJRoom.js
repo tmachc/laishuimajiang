@@ -68,11 +68,14 @@ cc.Class({
         
         if(cc.vv.gameNetMgr.conf){
             var type = cc.vv.gameNetMgr.conf.type;
-            if(type == null || type == ""){
+            if(type == null || type == "" || type == "kanhu"){
                 type = "xzdd";
             }
             
-            titles.getChildByName(type).active = true;   
+            var titleNode = titles.getChildByName(type);
+            if(titleNode){
+                titleNode.active = true;
+            }
         }
     },
     

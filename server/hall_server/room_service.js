@@ -89,13 +89,17 @@ function chooseServer(){
 }
 
 exports.createRoom = function(account,userId,roomConf,fnCallback){
+	console.log('room_service.createRoom called, userId:', userId, 'roomConf:', roomConf);
 	var serverinfo = chooseServer();
 	if(serverinfo == null){
+		console.log('createRoom failed: no game server available');
 		fnCallback(101,null);
 		return;
 	}
+	console.log('selected game server:', serverinfo);
 	
 	db.get_gems(account,function(data){
+		console.log('get_gems result:', data);
 		if(data != null){
 			//2、请求创建房间
 			var reqdata = {
@@ -104,8 +108,9 @@ exports.createRoom = function(account,userId,roomConf,fnCallback){
 				conf:roomConf
 			};
 			reqdata.sign = crypto.md5(userId + roomConf + data.gems + config.ROOM_PRI_KEY);
+			console.log('sending create_room request to game server');
 			http.get(serverinfo.ip,serverinfo.httpPort,"/create_room",reqdata,function(ret,data){
-				//console.log(data);
+				console.log('create_room response, ret:', ret, 'data:', data);
 				if(ret){
 					if(data.errcode == 0){
 						fnCallback(0,data.roomid);
@@ -119,6 +124,7 @@ exports.createRoom = function(account,userId,roomConf,fnCallback){
 			});	
 		}
 		else{
+			console.log('createRoom failed: get_gems returned null');
 			fnCallback(103,null);
 		}
 	});
@@ -209,6 +215,6 @@ exports.enterRoom = function(userId,name,roomId,fnCallback){
 
 exports.start = function($config){
 	config = $config;
-	app.listen(config.ROOM_PORT,config.FOR_ROOM_IP);
-	console.log("room service is listening on " + config.FOR_ROOM_IP + ":" + config.ROOM_PORT);
+	app.listen(config.ROOM_PORT, '0.0.0.0');
+	console.log("room service is listening on 0.0.0.0:" + config.ROOM_PORT);
 };

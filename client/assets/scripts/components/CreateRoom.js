@@ -109,6 +109,22 @@ cc.Class({
     },
 
     constructSCMJConf: function () {
+        // 如果 _currentGame 为 null（直接创建房间），使用默认配置
+        if (!this._currentGame) {
+            return {
+                difen: 0,
+                zimo: 0,
+                jiangdui: false,
+                huansanzhang: false,
+                zuidafanshu: 0,
+                jushuxuanze: 0,
+                dianganghua: 0,
+                menqing: false,
+                tiandihu: false,
+                maxGames: 4,
+                maxFan: 4
+            };
+        }
 
         var wanfaxuanze = this._currentGame.getChildByName('wanfaxuanze');
         var huansanzhang = wanfaxuanze.children[0].getComponent('CheckBox').checked;
