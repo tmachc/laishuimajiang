@@ -118,6 +118,7 @@ exports.start = function(conf,mgr){
 					roomid:roomInfo.id,
 					conf:roomInfo.conf,
 					numofgames:roomInfo.numOfGames,
+					gameQuan:roomInfo.gameQuan || 0,
 					seats:seats
 				}
 			};

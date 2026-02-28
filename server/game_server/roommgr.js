@@ -124,6 +124,7 @@ exports.createRoom = function(creator,roomConf,gems,ip,port,callback){
 						numOfGames:0,
 						createTime:createTime,
 						nextButton:0,
+						gameQuan:0,
 						seats:[],
 						conf:{
 							type:"kanhu",

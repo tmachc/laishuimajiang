@@ -133,12 +133,12 @@ cc.Class({
             return "准备开始";
         }
         // 显示当前局数和圈风庄
-        // 圈 = (numOfGames - 1) / 4 + 1
+        // 圈 = 
         // 庄 = button 映射：0=东, 1=南, 2=西, 3=北
         var quan = Math.ceil(this.numOfGames / 4);
         var zhuangArr = ["东", "南", "西", "北"];
         var zhuang = zhuangArr[this.button % 4];
-        return "当前局数 " + this.numOfGames + "圈" + zhuang;
+        return "当前局数 " + (this.gameQuan + 1) + "圈" + zhuang;
     },
     
     initHandlers:function(){
@@ -151,6 +151,7 @@ cc.Class({
                 self.conf = data.conf;
                 self.maxNumOfGames = data.conf.maxGames;
                 self.numOfGames = data.numofgames;
+                self.gameQuan = data.gameQuan || 0;
                 self.seats = data.seats;
                 self.seatIndex = self.getSeatIndexByID(cc.vv.userMgr.userId);
                 self.isOver = false;

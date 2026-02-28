@@ -949,26 +949,26 @@ function doGameOver(game,userId,forceEnd){
         delete games[roomId];
 
         var old = roomInfo.nextButton;
+        var oldQuan = roomInfo.gameQuan;
         if(game.yipaoduoxiang >= 0){
             roomInfo.nextButton = game.yipaoduoxiang;
         }
         else if(game.firstHupai >= 0){
-            //坎胡规则：庄家胡连庄，其他人胡牌则按东→北→西→南顺序轮转
             if(game.firstHupai == game.button){
-                //庄家胡，连庄
                 roomInfo.nextButton = game.button;
             }
             else{
-                //其他人胡，下一家坐庄（按东0→北1→西2→南3→东0轮转）
                 roomInfo.nextButton = (game.button + 1) % 4;
+                if(roomInfo.nextButton == 0){
+                    roomInfo.gameQuan++;
+                }
             }
         }
         else{
-            //平局（没人胡牌）：庄家不变，钱不变
             roomInfo.nextButton = game.button;
         }
 
-        if(old != roomInfo.nextButton){
+        if(old != roomInfo.nextButton || oldQuan != roomInfo.gameQuan){
             db.update_next_button(roomId,roomInfo.nextButton);
         }
     }
@@ -997,7 +997,7 @@ function doGameOver(game,userId,forceEnd){
                 db.cost_gems(game.gameSeats[0].userId,cost);
             }
 
-            var isEnd = (roomInfo.numOfGames >= roomInfo.conf.maxGames);
+            var isEnd = (roomInfo.gameQuan >= 4) || (roomInfo.numOfGames >= roomInfo.conf.maxGames);
             fnNoticeResult(isEnd);
         });            
     }
@@ -2156,19 +2156,9 @@ exports.hu = function(userId){
         sendOperations(game,ddd,hupai);
     }
 
-    //如果还有人可以胡牌，则等待
-    for(var i = 0; i < game.gameSeats.length; ++i){
-        var ddd = game.gameSeats[i];
-        if(ddd.canHu){
-            return;
-        }
-    }
-    
-    //和牌的下家继续打
+    //胡牌后直接结束本局，进入结算
     clearAllOptions(game);
-    game.turn = game.lastHuPaiSeat;
-    moveToNextUser(game);
-    doUserMoPai(game);
+    doGameOver(game,seatData.userId,false);
 };
 
 exports.guo = function(userId){
