@@ -318,11 +318,15 @@ cc.Class({
                 seat.diangangs = sd.diangangs;
                 seat.wangangs = sd.wangangs;
                 seat.pengs = sd.pengs;
+                seat.chis = sd.chis;
                 seat.dingque = sd.que;
                 seat.hued = sd.hued; 
                 seat.iszimo = sd.iszimo;
                 seat.huinfo = sd.huinfo;
                 seat.huanpais = sd.huanpais;
+                if(sd.totalscore !== undefined){
+                    seat.score = sd.totalscore;
+                }
                 if(i == self.seatIndex){
                     self.dingque = sd.que;
                 }
@@ -458,6 +462,14 @@ cc.Class({
             var si = self.getSeatIndexByID(userId);
             self.doPeng(si,data.pai);
         });
+
+        cc.vv.net.addHandler("chi_notify_push",function(data){
+            console.log('chi_notify_push');
+            console.log(data);
+            var userId = data.userid;
+            var si = self.getSeatIndexByID(userId);
+            self.doChi(si,data.pai,data.chi);
+        });
         
         cc.vv.net.addHandler("gang_notify_push",function(data){
             console.log('gang_notify_push');
@@ -552,6 +564,27 @@ cc.Class({
         pengs.push(pai);
             
         this.dispatchEvent('peng_notify',seatData);
+    },
+
+    doChi:function(seatIndex,pai,chiData){
+        var seatData = this.seats[seatIndex];
+        if(seatIndex == this.seatIndex){
+            for(var i = 0; i < chiData.length; ++i){
+                var p = chiData[i];
+                if(p == pai){
+                    continue;
+                }
+                var idx = seatData.holds.indexOf(p);
+                if(idx != -1){
+                    seatData.holds.splice(idx,1);
+                }
+            }
+        }
+        if(!seatData.chis){
+            seatData.chis = [];
+        }
+        seatData.chis.push(chiData);
+        this.dispatchEvent('chi_notify',{seatindex:seatIndex,pai:pai,chi:chiData});
     },
     
     getGangType:function(seatData,pai){

@@ -64,7 +64,7 @@ function checkKanHu(seatData, targetPai){
         mingMianziCount += seatData.wangangs.length;
     }
     if(seatData.chis){
-        mingMianziCount += seatData.chis.length / 3;
+        mingMianziCount += seatData.chis.length;
     }
     
     // 暗牌需要组成的面子数

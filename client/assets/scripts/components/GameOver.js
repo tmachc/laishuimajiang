@@ -266,7 +266,10 @@ cc.Class({
                 n.active = false;
             }
            
-            var lackingNum = (userData.pengs.length + numOfGangs)*3; 
+            var lackingNum = (userData.pengs.length + numOfGangs)*3;
+            if(userData.chis){
+                lackingNum += userData.chis.length * 3;
+            } 
             //显示相关的牌
             for(var k = 0; k < userData.holds.length; ++k){
                 var pai = userData.holds[k];
@@ -310,6 +313,16 @@ cc.Class({
                 for(var k = 0; k < pengs.length; ++k){
                     var mjid = pengs[k];
                     this.initPengAndGangs(seatView,index,mjid,"peng");
+                    index++;    
+                }    
+            }
+            
+            //初始化吃牌
+            var chis = userData.chis
+            if(chis){
+                for(var k = 0; k < chis.length; ++k){
+                    var chiData = chis[k];
+                    this.initChis(seatView,index,chiData);
                     index++;    
                 }    
             }
@@ -518,7 +531,10 @@ cc.Class({
             
             var numOfGangs = userData.angangs.length + userData.wangangs.length + userData.diangangs.length;
            
-            var lackingNum = (userData.pengs.length + numOfGangs)*3; 
+            var lackingNum = (userData.pengs.length + numOfGangs)*3;
+            if(userData.chis){
+                lackingNum += userData.chis.length * 3;
+            } 
             //显示相关的牌
             for(var k = 0; k < userData.holds.length; ++k){
                 var pai = userData.holds[k];
@@ -565,6 +581,16 @@ cc.Class({
                     index++;    
                 }    
             }
+            
+            //初始化吃牌
+            var chis = userData.chis
+            if(chis){
+                for(var k = 0; k < chis.length; ++k){
+                    var chiData = chis[k];
+                    this.initChis(seatView,index,chiData);
+                    index++;    
+                }    
+            }
         }
     },
     
@@ -599,6 +625,35 @@ cc.Class({
             }
             else{ 
                 sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("B_",mjid);
+            }
+        }
+        pgroot.x = index * 55 * 3 + index * 10;
+    },
+    
+    initChis:function(seatView,index,chiData){
+        var pgroot = null;
+        if(seatView._pengandgang.length <= index){
+            pgroot = cc.instantiate(cc.vv.mahjongmgr.pengPrefabSelf);
+            seatView._pengandgang.push(pgroot);
+            seatView.mahjongs.addChild(pgroot);    
+        }
+        else{
+            pgroot = seatView._pengandgang[index];
+            pgroot.active = true;
+        }
+        
+        var sprites = pgroot.getComponentsInChildren(cc.Sprite);
+        var spriteIndex = 0;
+        for(var s = 0; s < sprites.length; ++s){
+            var sprite = sprites[s];
+            if(sprite.node.name == "gang"){
+                sprite.node.active = false;
+            }
+            else{
+                if(spriteIndex < chiData.length){
+                    sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("B_",chiData[spriteIndex]);
+                    spriteIndex++;
+                }
             }
         }
         pgroot.x = index * 55 * 3 + index * 10;

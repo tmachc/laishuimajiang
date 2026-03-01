@@ -203,6 +203,25 @@ exports.start = function(conf,mgr){
 			socket.gameMgr.peng(socket.userId);
 		});
 		
+		//吃
+		socket.on('chi',function(data){
+			if(socket.userId == null || data == null){
+				return;
+			}
+			var chiIndex = -1;
+			if(typeof(data) == "number"){
+				chiIndex = data;
+			}
+			else if(typeof(data) == "string"){
+				chiIndex = parseInt(data);
+			}
+			else{
+				console.log("chi:invalid param");
+				return;
+			}
+			socket.gameMgr.chi(socket.userId,chiIndex);
+		});
+		
 		//杠
 		socket.on('gang',function(data){
 			if(socket.userId == null || data == null){

@@ -39,8 +39,22 @@ cc.Class({
             self.onPengGangChanged(data.seatData);
         });
         
+        this.node.on('chi_notify',function(data){
+            //刷新所有的牌
+            var seatIndex = data.seatindex;
+            var seatData = cc.vv.gameNetMgr.seats[seatIndex];
+            self.onPengGangChanged(seatData);
+        });
+        
         this.node.on('game_begin',function(data){
             self.onGameBein();
+        });
+        
+        this.node.on('game_sync',function(data){
+            var seats = cc.vv.gameNetMgr.seats;
+            for(var i in seats){
+                self.onPengGangChanged(seats[i]);
+            }
         });
         
         var seats = cc.vv.gameNetMgr.seats;
@@ -69,7 +83,7 @@ cc.Class({
     
     onPengGangChanged:function(seatData){
         
-        if(seatData.angangs == null && seatData.diangangs == null && seatData.wangangs == null && seatData.pengs == null){
+        if(seatData.angangs == null && seatData.diangangs == null && seatData.wangangs == null && seatData.pengs == null && seatData.chis == null){
             return;
         }
         var localIndex = cc.vv.gameNetMgr.getLocalIndex(seatData.seatindex);
@@ -116,7 +130,64 @@ cc.Class({
                 this.initPengAndGangs(pengangroot,side,pre,index,mjid,"peng");
                 index++;    
             }    
-        }        
+        }
+        
+        //初始化吃牌
+        var chis = seatData.chis
+        if(chis){
+            for(var i = 0; i < chis.length; ++i){
+                var chiData = chis[i];
+                this.initChis(pengangroot,side,pre,index,chiData);
+                index++;    
+            }    
+        }
+    },
+    
+    initChis:function(pengangroot,side,pre,index,chiData){
+        var pgroot = null;
+        if(pengangroot.childrenCount <= index){
+            if(side == "left" || side == "right"){
+                pgroot = cc.instantiate(cc.vv.mahjongmgr.pengPrefabLeft);
+            }
+            else{
+                pgroot = cc.instantiate(cc.vv.mahjongmgr.pengPrefabSelf);
+            }
+            
+            pengangroot.addChild(pgroot);    
+        }
+        else{
+            pgroot = pengangroot.children[index];
+            pgroot.active = true;
+        }
+        
+        if(side == "left"){
+            pgroot.y = -(index * 25 * 3);                    
+        }
+        else if(side == "right"){
+            pgroot.y = (index * 25 * 3);
+            pgroot.zIndex = -index;
+        }
+        else if(side == "myself"){
+            pgroot.x = index * 55 * 3 + index * 10;                    
+        }
+        else{
+            pgroot.x = -(index * 55*3);
+        }
+
+        var sprites = pgroot.getComponentsInChildren(cc.Sprite);
+        var spriteIndex = 0;
+        for(var s = 0; s < sprites.length; ++s){
+            var sprite = sprites[s];
+            if(sprite.node.name == "gang"){
+                sprite.node.active = false;
+            }
+            else{
+                if(spriteIndex < chiData.length){
+                    sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID(pre,chiData[spriteIndex]);
+                    spriteIndex++;
+                }
+            }
+        }
     },
     
     initPengAndGangs:function(pengangroot,side,pre,index,mjid,flag){

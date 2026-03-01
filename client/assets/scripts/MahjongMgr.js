@@ -128,7 +128,16 @@ cc.Class({
         else if(id >= 18 && id < 27){
             realId = id - 7;
         }
-        return "nv/" + realId + ".mp3";
+        else if(id >= 27 && id < 34){
+            var zhipaiAudio = [71, 81, 91, 31, 41, 51, 61];
+            realId = zhipaiAudio[id - 27];
+        }
+        var audioUrl = "nv/" + realId + ".mp3";
+        console.log("=== 麻将音频 ===");
+        console.log("牌ID:", id);
+        console.log("图名:", realId);
+        console.log("音频文件:", audioUrl);
+        return audioUrl;
     },
     
     getEmptySpriteFrame:function(side){

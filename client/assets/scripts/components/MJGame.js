@@ -346,7 +346,6 @@ cc.Class({
         
         
         this.node.on('game_chupai_notify',function(data){
-            self.hideChupai();
             var seatData = data.seatData;
             //如果是自己，则刷新手牌
             if(seatData.seatindex == cc.vv.gameNetMgr.seatIndex){
@@ -357,6 +356,7 @@ cc.Class({
             }
             self.showChupai();
             var audioUrl = cc.vv.mahjongmgr.getAudioURLByMJID(data.pai);
+            console.log("出牌ID:", data.pai, "音频文件:", audioUrl);
             cc.vv.audioMgr.playSFX(audioUrl);
         });
         
@@ -392,6 +392,23 @@ cc.Class({
             var localIndex = self.getLocalIndex(seatData.seatindex);
             self.playEfx(localIndex,"play_peng");
             cc.vv.audioMgr.playSFX("nv/peng.mp3");
+            self.hideOptions();
+        });
+
+        this.node.on('chi_notify',function(data){    
+            self.hideChupai();
+            
+            var seatIndex = data.seatindex;
+            var seatData = cc.vv.gameNetMgr.seats[seatIndex];
+            if(seatIndex == cc.vv.gameNetMgr.seatIndex){
+                self.initMahjongs();                
+            }
+            else{
+                self.initOtherMahjongs(seatData);
+            }
+            var localIndex = self.getLocalIndex(seatIndex);
+            self.playEfx(localIndex,"play_chi");
+            cc.vv.audioMgr.playSFX("nv/chi.mp3");
             self.hideOptions();
         });
         
@@ -447,8 +464,18 @@ cc.Class({
             var child = this._options.children[i]; 
             if(child.name == "op" && child.active == false){
                 child.active = true;
-                var sprite = child.getChildByName("opTarget").getComponent(cc.Sprite);
-                sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("M_",pai);
+                child.x = 530 - this._optionIndex * 265;
+                this._optionIndex++;
+                var opTarget = child.getChildByName("opTarget");
+                if(opTarget){
+                    opTarget.active = true;
+                    var sprite = opTarget.getComponent(cc.Sprite);
+                    sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("M_",pai);
+                }
+                var opTarget2 = child.getChildByName("opTarget2");
+                if(opTarget2){
+                    opTarget2.active = false;
+                }
                 var btn = child.getChildByName(btnName); 
                 btn.active = true;
                 btn.pai = pai;
@@ -466,6 +493,15 @@ cc.Class({
                 child.getChildByName("btnPeng").active = false;
                 child.getChildByName("btnGang").active = false;
                 child.getChildByName("btnHu").active = false;
+                child.getChildByName("btnChi").active = false;
+                var opTarget = child.getChildByName("opTarget");
+                if(opTarget){
+                    opTarget.active = false;
+                }
+                var opTarget2 = child.getChildByName("opTarget2");
+                if(opTarget2){
+                    opTarget2.active = false;
+                }
             }
         }
     },
@@ -475,8 +511,9 @@ cc.Class({
             this.hideOptions();
         }
         
-        if(data && (data.hu || data.gang || data.peng)){
+        if(data && (data.hu || data.gang || data.peng || data.chi)){
             this._options.active = true;
+            this._optionIndex = 0;
             if(data.hu){
                 this.addOption("btnHu",data.pai);
             }
@@ -489,7 +526,55 @@ cc.Class({
                     var gp = data.gangpai[i];
                     this.addOption("btnGang",gp);
                 }
+            }
+
+            if(data.chi && data.chipai){
+                for(var i = 0; i < data.chipai.length; i++){
+                   this.addChiOption("btnChi", data.chipai[i], i, data.pai);
+                }
             }   
+        }
+    },
+
+    addChiOption:function(btnName, chiList, chiIndex, targetPai){
+        for(var i = 0; i < this._options.childrenCount; ++i){
+            var child = this._options.children[i]; 
+            if(child.name == "op" && child.active == false){
+                child.active = true;
+                child.x = 530 - this._optionIndex * 265;
+                this._optionIndex++;
+                var showPai1, showPai2;
+                if(chiList[0] == targetPai){
+                    showPai1 = chiList[1];
+                    showPai2 = chiList[2];
+                }
+                else if(chiList[1] == targetPai){
+                    showPai1 = chiList[0];
+                    showPai2 = chiList[2];
+                }
+                else if(chiList[2] == targetPai){
+                    showPai1 = chiList[0];
+                    showPai2 = chiList[1];
+                }
+                var opTarget = child.getChildByName("opTarget");
+                var sprite = opTarget.getComponent(cc.Sprite);
+                opTarget.active = true;
+                opTarget.x = -230;
+                sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("M_",showPai1);
+                
+                var opTarget2 = child.getChildByName("opTarget2");
+                if(opTarget2){
+                    var sprite2 = opTarget2.getComponent(cc.Sprite);
+                    opTarget2.active = true;
+                    opTarget2.x = -130;
+                    sprite2.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID("M_",showPai2);
+                }
+                var btn = child.getChildByName(btnName); 
+                btn.active = true;
+                btn.pai = targetPai;
+                btn.chiIndex = chiIndex;
+                return;
+            }
         }
     },
     
@@ -711,6 +796,9 @@ cc.Class({
         var sideRoot = game.getChildByName(side);
         var sideHolds = sideRoot.getChildByName("holds");
         var num = seatData.pengs.length + seatData.angangs.length + seatData.diangangs.length + seatData.wangangs.length;
+        if(seatData.chis){
+            num += seatData.chis.length;
+        }
         num *= 3;
         for(var i = 0; i < num; ++i){
             var idx = this.getMJIndex(side,i);
@@ -770,6 +858,9 @@ cc.Class({
         
         //初始化手牌
         var lackingNum = (seatData.pengs.length + seatData.angangs.length + seatData.diangangs.length + seatData.wangangs.length)*3;
+        if(seatData.chis){
+            lackingNum += seatData.chis.length * 3;
+        }
         for(var i = 0; i < holds.length; ++i){
             var mjid = holds[i];
             var sprite = this._myMJArr[i + lackingNum];
@@ -858,7 +949,7 @@ cc.Class({
     },
     
     onOptionClicked:function(event){
-        console.log(event.target.pai);
+        console.log("onOptionClicked:", event.target.name, "pai:", event.target.pai, "chiIndex:", event.target.chiIndex);
         if(event.target.name == "btnPeng"){
             cc.vv.net.send("peng");
         }
@@ -867,6 +958,10 @@ cc.Class({
         }
         else if(event.target.name == "btnHu"){
             cc.vv.net.send("hu");
+        }
+        else if(event.target.name == "btnChi"){
+            console.log("sending chi, chiIndex:", event.target.chiIndex);
+            cc.vv.net.send("chi",event.target.chiIndex);
         }
         else if(event.target.name == "btnGuo"){
             cc.vv.net.send("guo");
