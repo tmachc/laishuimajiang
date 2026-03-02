@@ -128,15 +128,10 @@ cc.Class({
     },
     
     getWanfa:function(){
-        // 游戏未开始时显示"准备开始"
         if(this.numOfGames == 0){
             return "准备开始";
         }
-        // 显示当前局数和圈风庄
-        // 圈 = 
-        // 庄 = button 映射：0=东, 1=南, 2=西, 3=北
-        var quan = Math.ceil(this.numOfGames / 4);
-        var zhuangArr = ["东", "南", "西", "北"];
+        var zhuangArr = ["起", "走", "对", "底"];
         var zhuang = zhuangArr[this.button % 4];
         return "当前局数 " + (this.gameQuan + 1) + "圈" + zhuang;
     },
@@ -259,21 +254,15 @@ cc.Class({
             
             for(var i = 0; i < self.seats.length; ++i){
                 var s = self.seats[i]; 
-                if(s.folds == null){
-                    s.folds = [];
-                }
-                if(s.pengs == null){
-                    s.pengs = [];
-                }
-                if(s.angangs == null){
-                    s.angangs = [];
-                }
-                if(s.diangangs == null){
-                    s.diangangs = [];
-                }
-                if(s.wangangs == null){
-                    s.wangangs = [];
-                }
+                s.folds = [];
+                s.pengs = [];
+                s.chis = [];
+                s.angangs = [];
+                s.diangangs = [];
+                s.wangangs = [];
+                s.hued = false;
+                s.iszimo = false;
+                s.huinfo = [];
                 s.ready = false;
             }
             self.dispatchEvent('game_holds');
@@ -299,6 +288,15 @@ cc.Class({
             console.log(data);
             self.numOfMJ = data.numofmj;
             self.gamestate = data.state;
+            if(data.gameQuan !== undefined){
+                self.gameQuan = data.gameQuan;
+            }
+            if(data.numofgames !== undefined){
+                self.numOfGames = data.numofgames;
+            }
+            if(data.maxgames !== undefined){
+                self.maxNumOfGames = data.maxgames;
+            }
             if(self.gamestate == "dingque"){
                 self.isDingQueing = true;
             }

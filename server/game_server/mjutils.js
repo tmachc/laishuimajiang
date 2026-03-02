@@ -25,12 +25,30 @@ function checkTingPai(seatData, begin, end){
         
         var canKanHu = checkKanHu(seatData, i);
         if(canKanHu){
+            var kanScore = getKanScore(i);
             seatData.tingMap[i] = {
                 pattern: "kanhu",
-                fan: 1
+                fan: kanScore
             };
         }
     }
+}
+
+function getKanScore(paiId){
+    var paiNum = 0;
+    if(paiId >= 0 && paiId < 9){
+        paiNum = paiId + 1;
+    }
+    else if(paiId >= 9 && paiId < 18){
+        paiNum = paiId - 8;
+    }
+    else if(paiId >= 18 && paiId < 27){
+        paiNum = paiId - 17;
+    }
+    if(paiId == 22){
+        paiNum = 10;
+    }
+    return paiNum;
 }
 
 function checkKanHu(seatData, targetPai){

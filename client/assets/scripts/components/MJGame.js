@@ -62,7 +62,26 @@ cc.Class({
         this._mjcount = gameChild.getChildByName('mjcount').getComponent(cc.Label);
         this._mjcount.string = "剩余" + cc.vv.gameNetMgr.numOfMJ + "张";
         this._gamecount = gameChild.getChildByName('gamecount').getComponent(cc.Label);
-        this._gamecount.string = "" + cc.vv.gameNetMgr.numOfGames + "/" + cc.vv.gameNetMgr.maxNumOfGames + "局";
+        this._gamecount.string = "";
+
+        //显示"涞水麻将"
+        var gameBg = gameChild.getChildByName("gamebg");
+        if(gameBg){
+            var xzdd = gameBg.getChildByName("xzdd");
+            if(xzdd) xzdd.active = false;
+            var xlch = gameBg.getChildByName("xlch");
+            if(xlch) xlch.active = false;
+            
+            var labelNode = new cc.Node("laishui_label");
+            labelNode.parent = gameBg;
+            labelNode.x = 0;
+            labelNode.y = 85;
+            var label = labelNode.addComponent(cc.Label);
+            label.string = "涞水麻将";
+            label.fontSize = 24;
+            label.lineHeight = 24;
+            label.node.color = new cc.Color(255, 255, 255, 255);
+        }
 
         var myselfChild = gameChild.getChildByName("myself");
         var myholds = myselfChild.getChildByName("holds");
@@ -262,10 +281,17 @@ cc.Class({
             var pai = data.pai;
             var localIndex = cc.vv.gameNetMgr.getLocalIndex(data.seatIndex);
             if(localIndex == 0){
-                var index = 13;
-                var sprite = self._myMJArr[index];
-                self.setSpriteFrameByMJID("M_",sprite,pai,index);
-                sprite.node.mjId = pai;                
+                var seatData = cc.vv.gameNetMgr.seats[cc.vv.gameNetMgr.seatIndex];
+                var lackingNum = (seatData.pengs.length + seatData.angangs.length + seatData.diangangs.length + seatData.wangangs.length) * 3;
+                if(seatData.chis){
+                    lackingNum += seatData.chis.length * 3;
+                }
+                var index = lackingNum + seatData.holds.length - 1;
+                if(index >= 0 && index < self._myMJArr.length){
+                    var sprite = self._myMJArr[index];
+                    self.setSpriteFrameByMJID("M_",sprite,pai);
+                    sprite.node.mjId = pai;                
+                }
             }
             else if(cc.vv.replayMgr.isReplay()){
                 self.initMopai(data.seatIndex,pai);
@@ -336,7 +362,7 @@ cc.Class({
         });
         
         this.node.on('game_num',function(data){
-            self._gamecount.string = "" + cc.vv.gameNetMgr.numOfGames + "/" + cc.vv.gameNetMgr.maxNumOfGames + "局";
+            self._gamecount.string = "";
         });
         
         this.node.on('game_over',function(data){
@@ -883,8 +909,14 @@ cc.Class({
     },
     
     setSpriteFrameByMJID:function(pre,sprite,mjid){
-        sprite.spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID(pre,mjid);
-        sprite.node.active = true;
+        var spriteFrame = cc.vv.mahjongmgr.getSpriteFrameByMJID(pre,mjid);
+        if(spriteFrame){
+            sprite.spriteFrame = spriteFrame;
+            sprite.node.active = true;
+        }
+        else{
+            console.log("setSpriteFrameByMJID failed: pre=" + pre + ", mjid=" + mjid);
+        }
     },
     
     //如果玩家手上还有缺的牌没有打，则只能打缺牌

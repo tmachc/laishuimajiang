@@ -206,10 +206,7 @@ cc.Class({
     },
     
     onBtnWeichatClicked:function(){
-        var title = "<血战到底>";
-        if(cc.vv.gameNetMgr.conf.type == "xlch"){
-            var title = "<血流成河>";
-        }
+        var title = "<坎胡>";
         cc.vv.anysdkMgr.share("天天麻将" + title,"房号:" + cc.vv.gameNetMgr.roomId + " 玩法:" + cc.vv.gameNetMgr.getWanfa());
     },
     

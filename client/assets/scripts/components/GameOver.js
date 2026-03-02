@@ -112,112 +112,22 @@ cc.Class({
             var seatView = this._seats[i];
             var userData = data[i];
             var hued = false;
-            //胡牌的玩家才显示 是否清一色 根xn的字样
             var numOfGangs = userData.angangs.length + userData.wangangs.length + userData.diangangs.length;
-            var numOfGen = userData.numofgen;
             var actionArr = [];
-            var is7pairs = false;
-            var ischadajiao = false;
             for(var j = 0; j < userData.actions.length; ++j){
                 var ac = userData.actions[j];
-                if(ac.type == "zimo" || ac.type == "ganghua" || ac.type == "dianganghua" || ac.type == "hu" || ac.type == "gangpaohu" || ac.type == "qiangganghu" || ac.type == "chadajiao"){
-                    if(userData.pattern == "7pairs"){
-                        actionArr.push("七对");
-                    }
-                    else if(userData.pattern == "l7pairs"){
-                        actionArr.push("龙七对");
-                    }
-                    else if(userData.pattern == "j7pairs"){
-                        actionArr.push("将七对");
-                    }
-                    else if(userData.pattern == "duidui"){
-                        actionArr.push("碰碰胡");
-                    }
-                    else if(userData.pattern == "jiangdui"){
-                        actionArr.push("将对");
-                    }
-                    
+                if(ac.type == "zimo" || ac.type == "ganghua" || ac.type == "dianganghua" || ac.type == "hu" || ac.type == "gangpaohu" || ac.type == "qiangganghu"){
+                    actionArr.push("坎胡");
                     if(ac.type == "zimo"){
                         actionArr.push("自摸");
                     }
-                    else if(ac.type == "ganghua"){
-                        actionArr.push("杠上花");
-                    }
-                    else if(ac.type == "dianganghua"){
-                        actionArr.push("点杠花");
-                    }
-                    else if(ac.type == "gangpaohu"){
-                        actionArr.push("杠炮胡");
-                    }
-                    else if(ac.type == "qiangganghu"){
-                        actionArr.push("抢杠胡");
-                    }
-                    else if(ac.type == "chadajiao"){
-                        ischadajiao = true;
+                    else{
+                        actionArr.push("接炮胡");
                     }
                     hued = true;
                 }
                 else if(ac.type == "fangpao"){
                     actionArr.push("放炮");
-                }
-                else if(ac.type == "angang"){
-                    actionArr.push("暗杠");
-                }
-                else if(ac.type == "diangang"){
-                    actionArr.push("明杠");
-                }
-                else if(ac.type == "wangang"){
-                    actionArr.push("弯杠");
-                }
-                else if(ac.type == "fanggang"){
-                   actionArr.push("放杠");
-                }
-                else if(ac.type == "zhuanshougang"){
-                    actionArr.push("转手杠");
-                }
-                else if(ac.type == "beiqianggang"){
-                    actionArr.push("被抢杠");
-                }
-                else if(ac.type == "beichadajiao"){
-                    actionArr.push("被查叫");
-                }
-            }
-            
-            if(hued){
-                if(userData.qingyise){
-                    actionArr.push("清一色");
-                }
-                
-                if(userData.menqing){
-                    actionArr.push("门清");
-                }
-                
-                if(userData.zhongzhang){
-                    actionArr.push("中张");
-                }
-                
-                if(userData.jingouhu){
-                    actionArr.push("金钩胡");
-                }
-                                
-                if(userData.haidihu){
-                    actionArr.push("海底胡");
-                }
-                
-                if(userData.tianhu){
-                    actionArr.push("天胡");
-                }
-                
-                if(userData.dihu){
-                    actionArr.push("地胡");
-                }
-            
-                if(numOfGen > 0){
-                    actionArr.push("根x" + numOfGen); 
-                }                
-                
-                if(ischadajiao){
-                    actionArr.push("查大叫");
                 }
             }
             
@@ -232,14 +142,12 @@ cc.Class({
             seatView.zhuang.active = cc.vv.gameNetMgr.button == i;
             seatView.reason.string = actionArr.join("、");
             
-            //胡牌的玩家才有番
             var fan = 0;
             if(hued){
                 fan = userData.fan;
             }
-            seatView.fan.string = fan + "番";
+            seatView.fan.string = fan + "坎";
             
-            //
             if(userData.score > 0){
                 seatView.score.string = "+" + userData.score;    
             }
@@ -350,14 +258,11 @@ cc.Class({
             this._pingju.active = true;
         }
             
-        //显示玩家信息
         for(var i = 0; i < 4; ++i){
             var seatView = this._seats[i];
             var userData = data[i];
             var hued = false;
             var actionArr = [];
-            var is7pairs = false;
-            var ischadajiao = false;
             var hupaiRoot = seatView.hupai;
             
             for(var j = 0; j < hupaiRoot.children.length; ++j){
@@ -377,137 +282,27 @@ cc.Class({
                     }
                 }
                 
-                var str = ""
-                var sep = "";
+                var str = "";
                 
-                var dataseat = userData;
                 if(!info.ishupai){
-                    if(info.action == "fangpao"){
-                        str = "放炮";
-                    }
-                    else if(info.action == "gangpao"){
-                        str = "杠上炮";
-                    }
-                    else if(info.action == "beiqianggang"){
-                        str = "被抢杠";
-                    }
-                    else{
-                        str = "被查大叫";
-                    }
-                    
-                    dataseat = data[info.target]; 
-                    info = dataseat.huinfo[info.index];
+                    str = "放炮";
                 }
                 else{
                     if(info.action == "hu"){
-                        str = "接炮胡"
+                        str = "坎胡、接炮胡"
                     }
                     else if(info.action == "zimo"){
-                        str = "自摸";
+                        str = "坎胡、自摸";
                     }
-                    else if(info.action == "ganghua"){
-                        str = "杠上花";
+                    else{
+                        str = "坎胡";
                     }
-                    else if(info.action == "dianganghua"){
-                        str = "点杠花";
-                    }
-                    else if(info.action == "gangpaohu"){
-                        str = "杠炮胡";
-                    }
-                    else if(info.action == "qiangganghu"){
-                        str = "抢杠胡";
-                    }
-                    else if(info.action == "chadajiao"){
-                        str = "查大叫";
-                    }   
+                    str += "(" + info.fan + "坎)";
                 }
-                
-                str += "(";
-                
-                if(info.pattern == "7pairs"){
-                    str += "七对";
-                    sep = "、"
-                }
-                else if(info.pattern == "l7pairs"){
-                    str += "龙七对";
-                    sep = "、"
-                }
-                else if(info.pattern == "j7pairs"){
-                    str += "将七对";
-                    sep = "、"
-                }
-                else if(info.pattern == "duidui"){
-                    str += "碰碰胡";
-                    sep = "、"
-                }
-                else if(info.pattern == "jiangdui"){
-                    str += "将对";
-                    sep = "、"
-                }
-                    
-                if(info.haidihu){
-                    str += sep + "海底胡";
-                    sep = "、";
-                }
-                
-                if(info.tianhu){
-                    str += sep + "天胡";
-                    sep = "、";
-                }
-                
-                if(info.dihu){
-                    str += sep + "地胡";
-                    sep = "、";
-                }
-                
-                if(dataseat.qingyise){
-                    str += sep + "清一色";
-                    sep = "、";
-                }
-                
-                if(dataseat.menqing){
-                    str += sep + "门清";
-                    sep = "、";
-                }
-                
-                if(dataseat.jingouhu){
-                    str += sep + "金钩胡";
-                    sep = "、";
-                }
-                         
-                if(dataseat.zhongzhang){
-                    str += sep + "中张";
-                    sep = "、";
-                }
-            
-                if(info.numofgen > 0){
-                    str += sep + "根x" + info.numofgen;
-                    sep = "、"; 
-                }
-                
-                if(sep == ""){
-                    str += "平胡";
-                }
-                
-                str += "、" + info.fan + "番";
-                
-                str += ")";
                 actionArr.push(str);
             }
             
             seatView.hu.active = hued;
-            
-            if(userData.angangs.length){
-                actionArr.push("暗杠x" + userData.angangs.length);
-            }
-            
-            if(userData.diangangs.length){
-                actionArr.push("明杠x" + userData.diangangs.length);
-            }
-            
-            if(userData.wangangs.length){
-                actionArr.push("巴杠x" + userData.wangangs.length);
-            }
 
             seatView.username.string = cc.vv.gameNetMgr.seats[i].name;
             seatView.zhuang.active = cc.vv.gameNetMgr.button == i;
